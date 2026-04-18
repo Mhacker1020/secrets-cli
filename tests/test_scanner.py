@@ -2,6 +2,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+
 from secrets_cli.ignore import IgnoreRules
 from secrets_cli.scanner import scan_path
 

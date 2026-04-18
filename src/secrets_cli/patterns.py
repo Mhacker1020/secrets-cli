@@ -35,7 +35,10 @@ PATTERNS: list[Pattern] = [
     # ── Private keys (CRITICAL, no entropy check needed — header is unique) ──
     Pattern(
         name="Private Key (PEM)",
-        regex=_r(r"(-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY(?:-----|[ ]BLOCK-----)[-]*)"),
+        regex=_r(
+            r"(-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?"
+            r"PRIVATE KEY(?:-----|[ ]BLOCK-----)[-]*)"
+        ),
         severity="CRITICAL",
         description="Private key detected in file",
     ),

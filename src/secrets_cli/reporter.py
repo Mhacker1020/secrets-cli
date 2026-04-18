@@ -31,7 +31,10 @@ def print_findings(findings: list[Finding], no_color: bool = False) -> None:
         print(_c("GREEN", "✓ No secrets detected.", no_color))
         return
 
-    sorted_findings = sorted(findings, key=lambda f: (SEVERITY_ORDER.get(f.pattern.severity, 9), str(f.file), f.line))
+    sorted_findings = sorted(
+        findings,
+        key=lambda f: (SEVERITY_ORDER.get(f.pattern.severity, 9), str(f.file), f.line),
+    )
 
     print()
     for f in sorted_findings:

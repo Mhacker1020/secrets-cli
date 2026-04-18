@@ -1,4 +1,3 @@
-import pytest
 from secrets_cli.entropy import is_high_entropy, looks_like_placeholder, shannon_entropy
 
 

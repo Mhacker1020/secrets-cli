@@ -9,7 +9,6 @@ etc.
 IMPORTANT: Never add real credentials here, even expired ones.
 """
 
-import pytest
 from secrets_cli.patterns import PATTERNS
 
 pattern_map = {p.name: p for p in PATTERNS}
@@ -49,13 +48,13 @@ class TestAWSSecretKey:
     name = "AWS Secret Access Key"
 
     def test_env_format(self):
-        result = matches(self.name, 'AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"')
-        assert result  # entropy check happens in scanner, not pattern
+        key = 'AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"'
+        assert matches(self.name, key)  # entropy check happens in scanner, not pattern
 
     def test_config_format(self):
         # Exactly 40 chars after keyword
-        result = matches(self.name, 'aws_secret_access_key = wJalrXUtnFEMIK7MDENGbPxRfiCY8HvQzTk3mNpX')
-        assert result
+        key = "aws_secret_access_key = wJalrXUtnFEMIK7MDENGbPxRfiCY8HvQzTk3mNpX"
+        assert matches(self.name, key)
 
     # False positives
     def test_no_match_without_key_name(self):

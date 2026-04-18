@@ -1,6 +1,6 @@
-from pathlib import Path
 
 import pytest
+
 from secrets_cli.ignore import IgnoreRules
 
 
