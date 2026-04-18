@@ -20,7 +20,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Pattern:
     name: str
-    regex: re.Pattern
+    regex: re.Pattern[str]
     severity: str
     description: str
     entropy_check: bool = False
