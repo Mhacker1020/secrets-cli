@@ -27,7 +27,7 @@ class Pattern:
     entropy_charset: str = "generic"
 
 
-def _r(pattern: str) -> re.Pattern:
+def _r(pattern: str) -> re.Pattern[str]:
     return re.compile(pattern, re.IGNORECASE | re.MULTILINE)
 
 
