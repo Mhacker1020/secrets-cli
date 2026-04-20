@@ -207,7 +207,10 @@ class TestAzureConnectionString:
 
     def test_full_connection_string(self):
         fake_key = "A" * 86 + "=="
-        cs = f"DefaultEndpointsProtocol=https;AccountName=mystorageaccount;AccountKey={fake_key};EndpointSuffix=core.windows.net"
+        cs = (
+            f"DefaultEndpointsProtocol=https;AccountName=mystorageaccount;"
+            f"AccountKey={fake_key};EndpointSuffix=core.windows.net"
+        )
         assert matches(self.name, cs)
 
     def test_http_variant(self):
@@ -217,7 +220,8 @@ class TestAzureConnectionString:
 
     # False positives
     def test_no_account_key(self):
-        assert not matches(self.name, "DefaultEndpointsProtocol=https;AccountName=test;EndpointSuffix=core.windows.net")
+        cs = "DefaultEndpointsProtocol=https;AccountName=test;EndpointSuffix=core.windows.net"
+        assert not matches(self.name, cs)
 
 
 class TestAzureStorageAccountKey:
