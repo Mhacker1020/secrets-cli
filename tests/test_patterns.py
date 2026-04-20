@@ -179,6 +179,114 @@ class TestGenericSecret:
         assert not matches(self.name, "password = os.environ['PASSWORD']")
 
 
+# ── npm ──────────────────────────────────────────────────────────────────────
+
+class TestNpmToken:
+    name = "npm Access Token"
+
+    def test_format(self):
+        fake = "npm_" + "A" * 36
+        assert matches(self.name, fake)
+
+    def test_in_npmrc(self):
+        fake = "npm_" + "B" * 36
+        assert matches(self.name, f"//registry.npmjs.org/:_authToken={fake}")
+
+    # False positives
+    def test_too_short(self):
+        assert not matches(self.name, "npm_tooshort")
+
+    def test_wrong_prefix(self):
+        assert not matches(self.name, "npx_" + "A" * 36)
+
+
+# ── Azure ─────────────────────────────────────────────────────────────────────
+
+class TestAzureConnectionString:
+    name = "Azure Storage Connection String"
+
+    def test_full_connection_string(self):
+        fake_key = "A" * 86 + "=="
+        cs = f"DefaultEndpointsProtocol=https;AccountName=mystorageaccount;AccountKey={fake_key};EndpointSuffix=core.windows.net"
+        assert matches(self.name, cs)
+
+    def test_http_variant(self):
+        fake_key = "B" * 86 + "=="
+        cs = f"DefaultEndpointsProtocol=http;AccountName=test;AccountKey={fake_key}"
+        assert matches(self.name, cs)
+
+    # False positives
+    def test_no_account_key(self):
+        assert not matches(self.name, "DefaultEndpointsProtocol=https;AccountName=test;EndpointSuffix=core.windows.net")
+
+
+class TestAzureStorageAccountKey:
+    name = "Azure Storage Account Key"
+
+    def test_env_format(self):
+        fake_key = "A" * 86 + "=="
+        assert matches(self.name, f'ACCOUNT_KEY="{fake_key}"')
+
+    def test_yaml_format(self):
+        fake_key = "B" * 86 + "=="
+        assert matches(self.name, f"AccountKey: {fake_key}")
+
+    # False positives
+    def test_no_match_without_context(self):
+        assert not matches(self.name, "A" * 86 + "==")
+
+
+# ── OpenAI ────────────────────────────────────────────────────────────────────
+
+class TestOpenAIKey:
+    name = "OpenAI API Key"
+
+    def test_classic_format(self):
+        fake = "sk-" + "A" * 48
+        assert matches(self.name, fake)
+
+    def test_project_format(self):
+        fake = "sk-proj-" + "A" * 48
+        assert matches(self.name, fake)
+
+    def test_in_env(self):
+        fake = "sk-" + "B" * 48
+        assert matches(self.name, f"OPENAI_API_KEY={fake}")
+
+    # False positives
+    def test_stripe_not_matched(self):
+        # Stripe uses underscores: sk_live_ / sk_test_ — not sk-
+        assert not matches(self.name, "sk_live_" + "x" * 24)
+
+    def test_too_short(self):
+        assert not matches(self.name, "sk-" + "A" * 10)
+
+
+# ── Anthropic ─────────────────────────────────────────────────────────────────
+
+class TestAnthropicKey:
+    name = "Anthropic API Key"
+
+    def test_format(self):
+        fake = "sk-ant-api03-" + "A" * 93
+        assert matches(self.name, fake)
+
+    def test_generic_ant_prefix(self):
+        fake = "sk-ant-" + "A" * 40
+        assert matches(self.name, fake)
+
+    def test_in_env(self):
+        fake = "sk-ant-api03-" + "B" * 50
+        assert matches(self.name, f"ANTHROPIC_API_KEY={fake}")
+
+    # False positives
+    def test_openai_not_matched(self):
+        assert not matches(self.name, "sk-" + "A" * 48)
+
+    def test_too_short(self):
+        assert not matches(self.name, "sk-ant-tooshort")
+
+
 # ── Private key ───────────────────────────────────────────────────────────────
 
 class TestPrivateKey:

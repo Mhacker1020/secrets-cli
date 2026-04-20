@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "secrets-cli"
-version = "0.1.0"
+name = "nosecrets"
+version = "0.2.0"
 description = "Scan for hardcoded secrets before they reach your repository"
 readme = "README.md"
 license = { file = "LICENSE" }

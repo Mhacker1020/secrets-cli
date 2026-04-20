@@ -89,6 +89,14 @@ PATTERNS: list[Pattern] = [
         description="GitLab Personal Access Token",
     ),
 
+    # ── npm (HIGH — unique prefix + fixed length) ──
+    Pattern(
+        name="npm Access Token",
+        regex=_r(r"(npm_[a-zA-Z0-9]{36})"),
+        severity="HIGH",
+        description="npm Access Token",
+    ),
+
     # ── Google (HIGH) ──
     Pattern(
         name="Google API Key",
@@ -145,6 +153,42 @@ PATTERNS: list[Pattern] = [
         regex=_r(r"(AC[a-f0-9]{32})"),
         severity="HIGH",
         description="Twilio Account SID",
+    ),
+
+    # ── Azure (CRITICAL) ──
+    Pattern(
+        name="Azure Storage Connection String",
+        regex=_r(
+            r"(DefaultEndpointsProtocol=https?;AccountName=[^;\"'\s]{1,64}"
+            r";AccountKey=[^;\"'\s]{60,})"
+        ),
+        severity="CRITICAL",
+        description="Azure Storage Account connection string with embedded key",
+    ),
+    Pattern(
+        name="Azure Storage Account Key",
+        regex=_r(
+            r'(?:account[_-]?key|ACCOUNT[_-]?KEY|AccountKey)\s*[=:]\s*["\']?'
+            r'([A-Za-z0-9+/]{86}==)["\']?'
+        ),
+        severity="CRITICAL",
+        description="Azure Storage Account Key",
+        entropy_check=True,
+        entropy_charset="base64",
+    ),
+
+    # ── OpenAI / Anthropic (CRITICAL — AI provider keys) ──
+    Pattern(
+        name="OpenAI API Key",
+        regex=_r(r"(sk-(?:proj-[a-zA-Z0-9_-]{48,}|[a-zA-Z0-9]{48}))"),
+        severity="CRITICAL",
+        description="OpenAI API Key",
+    ),
+    Pattern(
+        name="Anthropic API Key",
+        regex=_r(r"(sk-ant-[a-zA-Z0-9_-]{40,})"),
+        severity="CRITICAL",
+        description="Anthropic (Claude) API Key",
     ),
 
     # ── Database connection strings (HIGH — contains credentials) ──

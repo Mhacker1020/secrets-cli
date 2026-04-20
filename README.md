@@ -1,4 +1,4 @@
-# secrets-cli
+# nosecrets
 
 **Scan for hardcoded secrets before they reach your repository.**
 
@@ -25,7 +25,7 @@ $ secrets scan
 ## Install
 
 ```bash
-pip install secrets-cli
+pip install nosecrets
 ```
 
 Requires Python 3.12+.
@@ -82,9 +82,14 @@ secrets uninstall
 | CRITICAL | RSA / EC / OpenSSH private keys |
 | CRITICAL | AWS Access Key ID (`AKIA...`) |
 | CRITICAL | AWS Secret Access Key (with keyword context) |
+| CRITICAL | Azure Storage connection string (`DefaultEndpointsProtocol=...`) |
+| CRITICAL | Azure Storage Account Key (with keyword context) |
+| CRITICAL | OpenAI API Key (`sk-...`, `sk-proj-...`) |
+| CRITICAL | Anthropic API Key (`sk-ant-...`) |
 | CRITICAL | Stripe Live Secret Key (`sk_live_...`) |
 | HIGH | GitHub Tokens (`ghp_`, `github_pat_`, `gho_`, `ghs_`, `ghr_`) |
 | HIGH | GitLab Personal Access Token (`glpat-...`) |
+| HIGH | npm Access Token (`npm_...`) |
 | HIGH | Google API Key (`AIza...`) |
 | HIGH | Slack Bot / User / Webhook tokens |
 | HIGH | SendGrid API Key (`SG....`) |
@@ -145,7 +150,7 @@ Default `--fail-on` is `high`. Change with `--fail-on critical` to only block on
 # GitHub Actions example
 - name: Scan for secrets
   run: |
-    pip install secrets-cli
+    pip install nosecrets
     secrets scan --json --severity medium
 ```
 
@@ -158,7 +163,7 @@ Default `--fail-on` is `high`. Change with `--fail-on critical` to only block on
 - **Zero runtime dependencies** — stdlib only, fully auditable
 - **Staged scanning** reads from the git index (`git show :<path>`), not the working tree — you scan exactly what will be committed
 - **Secrets are never printed in full** — output always redacts the middle portion
-- **Pattern quality over quantity** — 15 well-tested patterns beat 500 noisy ones
+- **Pattern quality over quantity** — 20 well-tested patterns beat 500 noisy ones
 
 ---
 
