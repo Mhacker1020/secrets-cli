@@ -1,13 +1,15 @@
 """
 Core scanner — walks files and applies patterns.
 
-Two modes:
-  - scan_path(path):   walk a directory or single file
-  - scan_staged(root): scan only git-staged content (reads from git index)
+Three modes:
+  - scan_path(path):    walk a directory or single file
+  - scan_staged(root):  scan only git-staged content (reads from git index)
+  - scan_history(root): scan entire git commit history (added lines only)
 """
 
+import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .entropy import is_high_entropy
@@ -20,12 +22,13 @@ class Finding:
     file: Path
     line: int
     pattern: Pattern
-    redacted: str   # shown to user: first 4 + **** + last 4
-    raw: str        # used only for deduplication, never printed
+    redacted: str    # shown to user: first 4 + **** + last 4
+    raw: str         # used only for deduplication, never printed
+    commit: str = field(default="")       # short hash (history mode only)
+    commit_msg: str = field(default="")   # first line of commit message
 
 
 def _redact(value: str) -> str:
-    """Show first 4 and last 4 chars, mask the middle."""
     if len(value) <= 8:
         return "*" * len(value)
     return value[:4] + "*" * (len(value) - 8) + value[-4:]
@@ -35,9 +38,13 @@ def _scan_lines(
     file: Path,
     lines: list[str],
     ignore: IgnoreRules,
+    seen: set[str] | None = None,
+    commit: str = "",
+    commit_msg: str = "",
 ) -> list[Finding]:
     findings: list[Finding] = []
-    seen: set[str] = set()
+    if seen is None:
+        seen = set()
 
     for lineno, line in enumerate(lines, start=1):
         if ignore.is_suppressed_line(line):
@@ -60,6 +67,8 @@ def _scan_lines(
                         pattern=pattern,
                         redacted=_redact(raw),
                         raw=raw,
+                        commit=commit,
+                        commit_msg=commit_msg,
                     )
                 )
     return findings
@@ -90,7 +99,7 @@ def scan_path(root: Path, ignore: IgnoreRules) -> list[Finding]:
 
 def scan_staged(root: Path, ignore: IgnoreRules) -> list[Finding]:
     """
-    Scan only git-staged files using 'git show :<path>' to read the staged content.
+    Scan only git-staged files using 'git show :<path>' to read staged content.
     This is what the pre-commit hook uses — it sees exactly what will be committed.
     """
     try:
@@ -115,7 +124,6 @@ def scan_staged(root: Path, ignore: IgnoreRules) -> list[Finding]:
         if ignore.is_ignored(path):
             continue
 
-        # Read staged content from git index (not working tree)
         try:
             content_result = subprocess.run(
                 ["git", "show", f":{rel_path}"],
@@ -131,10 +139,95 @@ def scan_staged(root: Path, ignore: IgnoreRules) -> list[Finding]:
             continue
 
         content = content_result.stdout
-        if "\x00" in content:  # binary
+        if "\x00" in content:
             continue
 
         lines = content.splitlines()
         findings.extend(_scan_lines(path, lines, ignore))
+
+    return findings
+
+
+def scan_history(
+    root: Path,
+    ignore: IgnoreRules,
+    max_commits: int = 0,
+) -> list[Finding]:
+    """
+    Scan the entire git commit history for secrets in added lines.
+
+    Reads only lines introduced ('+') in each commit's diff so that
+    deleted secrets are still found even if no longer in the working tree.
+    Deduplicates globally: same secret in same file reported once.
+    """
+    try:
+        log_result = subprocess.run(
+            ["git", "log", "--all", "--reverse", "--format=%H %s"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
+
+    if log_result.returncode != 0:
+        return []
+
+    commit_lines = [c for c in log_result.stdout.strip().splitlines() if c]
+    if max_commits:
+        commit_lines = commit_lines[-max_commits:]
+
+    findings: list[Finding] = []
+    seen: set[str] = set()   # global dedup across all commits
+
+    for commit_line in commit_lines:
+        parts = commit_line.split(" ", 1)
+        commit_hash = parts[0]
+        commit_msg = parts[1] if len(parts) > 1 else ""
+        short_hash = commit_hash[:8]
+
+        try:
+            diff_result = subprocess.run(
+                ["git", "diff-tree", "--no-commit-id", "--root", "-r", "-p", commit_hash],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                errors="replace",
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+
+        if diff_result.returncode != 0:
+            continue
+
+        current_file: Path | None = None
+        current_line = 0
+
+        for diff_line in diff_result.stdout.splitlines():
+            if diff_line.startswith("+++ b/"):
+                current_file = root / diff_line[6:]
+                current_line = 0
+            elif diff_line.startswith("@@ "):
+                m = re.search(r"\+(\d+)", diff_line)
+                if m:
+                    current_line = int(m.group(1)) - 1
+            elif diff_line.startswith("+") and not diff_line.startswith("+++"):
+                current_line += 1
+                if current_file is None or ignore.is_ignored(current_file):
+                    continue
+                content = diff_line[1:]
+                new = _scan_lines(
+                    current_file,
+                    [content],
+                    ignore,
+                    seen=seen,
+                    commit=short_hash,
+                    commit_msg=commit_msg,
+                )
+                findings.extend(new)
+            elif not diff_line.startswith("-"):
+                current_line += 1
 
     return findings
