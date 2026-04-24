@@ -22,6 +22,21 @@ $ secrets scan
 
 ---
 
+## Why nosecrets?
+
+| Feature | gitleaks | truffleHog | detect-secrets | **nosecrets** |
+|---------|:--------:|:----------:|:--------------:|:-------------:|
+| Git history scan | ✅ | ✅ | ❌ | ✅ |
+| SARIF output | ✅ | ✅ | ❌ | ✅ |
+| Baseline file | ❌ | ❌ | ✅ | ✅ |
+| Zero runtime deps | ❌ Go binary | ❌ | ❌ | ✅ |
+| `pip install` | ❌ | ❌ | ✅ | ✅ |
+| False positive handling | weak | weak | ok | **best-in-class** |
+
+The only zero-dependency Python tool with git history scanning, SARIF output, and baseline suppression — all three.
+
+---
+
 ## Install
 
 ```bash
@@ -44,11 +59,21 @@ secrets scan src/
 # Scan only staged files (pre-commit)
 secrets scan --staged
 
-# JSON output for CI
-secrets scan --json
+# Output formats
+secrets scan --format text    # coloured output (default)
+secrets scan --format json    # JSON for CI pipelines
+secrets scan --format sarif   # SARIF for GitHub Advanced Security
 
 # Only report HIGH and above
 secrets scan --severity high
+
+# Scan entire git history (finds secrets in deleted commits too)
+secrets scan --history
+secrets scan --history --max-commits 50
+
+# Baseline — skip known findings, report only new ones
+secrets baseline              # write .nosecrets-baseline.json
+secrets scan --baseline       # compare against baseline
 
 # Install pre-commit hook
 secrets init
@@ -147,11 +172,32 @@ Default `--fail-on` is `high`. Change with `--fail-on critical` to only block on
 ## CI integration
 
 ```yaml
-# GitHub Actions example
+# GitHub Actions — basic
 - name: Scan for secrets
   run: |
     pip install nosecrets
-    secrets scan --json --severity medium
+    secrets scan --severity medium
+```
+
+```yaml
+# GitHub Actions — SARIF upload (shows findings inline in PR diffs)
+- name: Scan for secrets
+  run: |
+    pip install nosecrets
+    secrets scan --format sarif > results.sarif
+
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: results.sarif
+```
+
+```yaml
+# GitHub Actions — baseline (report only new secrets)
+- name: Scan for new secrets
+  run: |
+    pip install nosecrets
+    secrets scan --baseline  # requires .nosecrets-baseline.json committed to repo
 ```
 
 ---
